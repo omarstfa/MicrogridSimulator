@@ -4,7 +4,7 @@
 	         AnyLogic Project File
 *************************************************
 -->
-<AnyLogicWorkspace WorkspaceVersion="1.9" AnyLogicVersion="8.9.6.202509050523" AlpVersion="8.9.6">
+<AnyLogicWorkspace WorkspaceVersion="1.9" AnyLogicVersion="8.9.7.202512121156" AlpVersion="8.9.7">
 <Model>
 	<Id>1770121778104</Id>
 	<Name><![CDATA[Microgrid_Fault_Log]]></Name>
@@ -358,7 +358,7 @@ gridFailure.restart();]]></Action>
 						<OccurrenceAtTime>true</OccurrenceAtTime>
 						<OccurrenceDate>1770192000000</OccurrenceDate>
 						<OccurrenceTime Class="CodeUnitValue">
-							<Code><![CDATA[exponential(1.0 / (3e-4))   // ≈ 3333 h MTTF]]></Code>
+							<Code><![CDATA[exponential(1.0)   // ≈ 3333 h MTTF]]></Code>
 							<Unit Class="TimeUnits"><![CDATA[HOUR]]></Unit>
 						</OccurrenceTime>
 						<RecurrenceCode Class="CodeUnitValue">
@@ -426,7 +426,7 @@ pvInvFailure.restart();]]></Action>
 						<OccurrenceAtTime>true</OccurrenceAtTime>
 						<OccurrenceDate>1770192000000</OccurrenceDate>
 						<OccurrenceTime Class="CodeUnitValue">
-							<Code><![CDATA[exponential(1.0 / (3e-2))   // ≈ 3333 h MTTF]]></Code>
+							<Code><![CDATA[exponential(1.0)   // ≈ 3333 h MTTF]]></Code>
 							<Unit Class="TimeUnits"><![CDATA[HOUR]]></Unit>
 						</OccurrenceTime>
 						<RecurrenceCode Class="CodeUnitValue">
@@ -494,7 +494,7 @@ islandCtrlFailure.restart();]]></Action>
 						<OccurrenceAtTime>true</OccurrenceAtTime>
 						<OccurrenceDate>1770192000000</OccurrenceDate>
 						<OccurrenceTime Class="CodeUnitValue">
-							<Code><![CDATA[exponential(1.0 / (3e-4))   // ≈ 3333 h MTTF]]></Code>
+							<Code><![CDATA[exponential(1.0)   // ≈ 3333 h MTTF]]></Code>
 							<Unit Class="TimeUnits"><![CDATA[HOUR]]></Unit>
 						</OccurrenceTime>
 						<RecurrenceCode Class="CodeUnitValue">
@@ -562,7 +562,7 @@ pccFailure.restart();]]></Action>
 						<OccurrenceAtTime>true</OccurrenceAtTime>
 						<OccurrenceDate>1770192000000</OccurrenceDate>
 						<OccurrenceTime Class="CodeUnitValue">
-							<Code><![CDATA[exponential(1.0 / (3e-4))   // ≈ 3333 h MTTF]]></Code>
+							<Code><![CDATA[exponential(-1.0 /3)   // ≈ 3333 h MTTF]]></Code>
 							<Unit Class="TimeUnits"><![CDATA[HOUR]]></Unit>
 						</OccurrenceTime>
 						<RecurrenceCode Class="CodeUnitValue">
@@ -698,7 +698,7 @@ batteryFailure.restart();]]></Action>
 						<OccurrenceAtTime>true</OccurrenceAtTime>
 						<OccurrenceDate>1770192000000</OccurrenceDate>
 						<OccurrenceTime Class="CodeUnitValue">
-							<Code><![CDATA[exponential(1.0 / (3e-4))   // ≈ 3333 h MTTF]]></Code>
+							<Code><![CDATA[exponential(1.0)   // ≈ 3333 h MTTF]]></Code>
 							<Unit Class="TimeUnits"><![CDATA[HOUR]]></Unit>
 						</OccurrenceTime>
 						<RecurrenceCode Class="CodeUnitValue">
@@ -800,7 +800,7 @@ pcsFailure.restart();]]></Action>
 						<OccurrenceAtTime>true</OccurrenceAtTime>
 						<OccurrenceDate>1770192000000</OccurrenceDate>
 						<OccurrenceTime Class="CodeUnitValue">
-							<Code><![CDATA[exponential(1.0 / (3e-4))   // ≈ 3333 h MTTF]]></Code>
+							<Code><![CDATA[exponential(1.0)   // ≈ 3333 h MTTF]]></Code>
 							<Unit Class="TimeUnits"><![CDATA[HOUR]]></Unit>
 						</OccurrenceTime>
 						<RecurrenceCode Class="CodeUnitValue">
@@ -1061,5 +1061,6 @@ boolean lossOfSupply =
 	<Uuid>2216cdd0-177c-5678-9e88-dd8b95312234</Uuid>
 	<Uuid>1737c8c6-b526-4dd8-589e-ee4e205b06f4</Uuid>
 	<Uuid>6a43bef6-8b70-4253-a828-82c3ab399655</Uuid>
+	<Uuid>0a27038a-0f3a-48bb-b235-4a44066a1402</Uuid>
 </ConvertersApplied>
 </AnyLogicWorkspace>
