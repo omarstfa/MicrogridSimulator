@@ -12,54 +12,54 @@ N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
 
 start_time = pd.Timestamp("2026-01-01 00:00:00")
 
-# np.random.seed(7)
+np.random.seed(7)
 
 # ============================================================
 # COMPONENT DEFINITIONS (INTENTIONALLY HIGH FAILURE RATES)
 # ============================================================
 
 components = {
-    "Grid": {
-        "lambda": 0.08 / 24,
-        "mu": 0.4 / 24,
-        "up": True
-    },
-    "PCC_Breaker": {
-        "lambda": 5e-3,
-        "mu": 0.3,
-        "up": True
-    },
-    "Islanding_Controller": {
-        "lambda": 7e-3,
-        "mu": 0.25,
-        "up": True
-    },
-    "PV_Array": {
-        "lambda": 5e-3,
-        "mu": 0.05,
-        "up": True
-    },
-    "PV_Inverter": {
-        "lambda": 8e-3,
-        "mu": 0.15,
-        "up": True
-    },
-    "Battery_Pack": {
-        "lambda": 6e-3,
-        "mu": 0.05,
-        "up": True
-    },
-    "BMS": {
-        "lambda": 7e-3,
-        "mu": 0.25,
-        "up": True
-    },
-    "PCS": {
-        "lambda": 7e-3,
-        "mu": 0.25,
-        "up": True
-    }
-}
+            "Grid": {
+                "lambda": 0.08 / 24,
+                "mu": 0.4 / 24,
+                "up": True
+            },
+            "PCC_Breaker": {
+                "lambda": 5e-3,
+                "mu": 0.3,
+                "up": True
+            },
+            "Islanding_Controller": {
+                "lambda": 7e-3,
+                "mu": 0.25,
+                "up": True
+            },
+            "PV_Array": {
+                "lambda": 5e-3,
+                "mu": 0.05,
+                "up": True
+            },
+            "PV_Inverter": {
+                "lambda": 8e-3,
+                "mu": 0.15,
+                "up": True
+            },
+            "Battery_Pack": {
+                "lambda": 6e-3,
+                "mu": 0.05,
+                "up": True
+            },
+            "BMS": {
+                "lambda": 7e-3,
+                "mu": 0.25,
+                "up": True
+            },
+            "PCS": {
+                "lambda": 7e-3,
+                "mu": 0.25,
+                "up": True
+            }
+        }
 
 # ============================================================
 # HELPER FUNCTIONS
@@ -135,7 +135,7 @@ state_df = pd.DataFrame(state_log)
 state_df.index = pd.date_range(
     start=start_time,
     periods=len(state_df),
-    freq="H"
+    freq="h"
 )
 
 fault_df = pd.DataFrame(
