@@ -212,7 +212,7 @@ state_df = pd.DataFrame(state_log)
 state_df.index = pd.date_range(
     start=start_time,
     periods=len(state_df),
-    freq="H"
+    freq="h"
 )
 
 fault_df = pd.DataFrame(
