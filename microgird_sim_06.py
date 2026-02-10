@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 10 00:10:30 2026
-
-@author: User
-"""
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -37,8 +30,8 @@ BATTERY_EFFICIENCY = 0.95
 PV_CAPACITY_KW = 10
 
 # Load demand parameters (residential microgrid)
-BASE_LOAD_KW = 2.5  # Base load
-PEAK_LOAD_KW = 5    # Peak load
+BASE_LOAD_KW = 3  # Base load
+PEAK_LOAD_KW = 8   # Peak load
 LOAD_VARIABILITY = 0.3  # Load variability factor
 
 # ============================================================
@@ -108,6 +101,32 @@ def calculate_load_demand(hour):
     
     return max(1.0, load)  # Minimum 1 kW load
 
+def calculate_fault_tree_events(comp_states):
+    """
+    Calculate intermediate fault tree events based on component states
+    
+    Fault Tree Logic:
+    immediate_failure = Grid down AND (PCC_Breaker OR Islanding_Controller down)
+    islanded_failure = Grid down AND (PV system down) AND (Battery system down)
+    loss_of_supply = immediate_failure OR islanded_failure
+    """
+    BE1 = not comp_states["Grid"]
+    BE2 = not comp_states["PCC_Breaker"]
+    BE3 = not comp_states["Islanding_Controller"]
+    BE4 = not comp_states["PV_Array"]
+    BE5 = not comp_states["PV_Inverter"]
+    BE6 = not comp_states["Battery_Pack"]
+    BE7 = not comp_states["BMS"]
+    BE8 = not comp_states["PCS"]
+    
+    immediate_failure = BE1 and (BE2 or BE3)
+    islanded_failure = BE1 and ((BE4 or BE5) and (BE6 or BE7 or BE8))
+    
+    return {
+        "immediate_failure": immediate_failure,
+        "islanded_failure": islanded_failure
+    }
+
 # ============================================================
 # DATA STORAGE
 # ============================================================
@@ -133,9 +152,13 @@ for step in range(N_STEPS):
     load_demand = calculate_load_demand(step)
 
     # ========================================================
-    # COMPONENT FAILURE AND REPAIR LOGIC
+    # COMPONENT FAILURE AND REPAIR LOGIC (RANDOM FAILURES)
     # ========================================================
     for name, comp in components.items():
+        # Skip PV_Array and Battery_Pack - their states will be overridden by operational conditions
+        if name in ["PV_Array", "Battery_Pack"]:
+            continue
+            
         if comp["up"] and attempt_failure(comp):
             comp["up"] = False
             fault_log.append([current_time, name, "FAILURE"])
@@ -145,7 +168,26 @@ for step in range(N_STEPS):
             fault_log.append([current_time, name, "REPAIR"])
 
     # ========================================================
-    # ENERGY DISPATCH LOGIC
+    # OPERATIONAL STATE OVERRIDES
+    # ========================================================
+    
+    # PV_Array state: DOWN when solar output is 0
+    pv_array_operational = solar_generation > 0.01
+    
+    # Track PV_Array state changes due to operational conditions
+    if components["PV_Array"]["up"] and not pv_array_operational:
+        components["PV_Array"]["up"] = False
+        fault_log.append([current_time, "PV_Array", "OUTPUT_ZERO"])
+    elif not components["PV_Array"]["up"] and pv_array_operational:
+        # Only restore if it wasn't failed due to random failure
+        # Check if there was a random failure that hasn't been repaired
+        components["PV_Array"]["up"] = True
+        fault_log.append([current_time, "PV_Array", "OUTPUT_ACTIVE"])
+    
+    # Battery_Pack will be set later based on SOC after energy dispatch
+
+    # ========================================================
+    # ENERGY DISPATCH LOGIC (REALISTIC)
     # ========================================================
     
     # Check component availability for each source
@@ -209,28 +251,25 @@ for step in range(N_STEPS):
     soc = (battery_kwh / BATTERY_CAPACITY_KWH) * 100
     
     # ========================================================
-    # FAILURE LOGGING FOR ZERO STATES
+    # BATTERY_PACK STATE OVERRIDE BASED ON SOC
     # ========================================================
     
-    # Log battery SOC reaching 0 (transition from non-zero to zero)
-    if prev_soc > 0.1 and soc <= 0.1:
-        fault_log.append([current_time, "Battery_Pack", "SOC_DEPLETED"])
+    battery_pack_operational = soc > 0.1  # Battery considered operational if SOC > 0.1%
     
-    # Log battery SOC recovering from 0 (transition from zero to non-zero)
-    if prev_soc <= 0.1 and soc > 0.1:
+    # Track Battery_Pack state changes due to SOC depletion
+    if components["Battery_Pack"]["up"] and not battery_pack_operational:
+        components["Battery_Pack"]["up"] = False
+        fault_log.append([current_time, "Battery_Pack", "SOC_DEPLETED"])
+    elif not components["Battery_Pack"]["up"] and battery_pack_operational:
+        components["Battery_Pack"]["up"] = True
         fault_log.append([current_time, "Battery_Pack", "SOC_RECOVERED"])
     
-    # Log PV output reaching 0 (transition from non-zero to zero)
-    if prev_pv_output > 0.01 and solar_generation <= 0.01:
-        fault_log.append([current_time, "PV_Array", "OUTPUT_ZERO"])
+    # ========================================================
+    # CALCULATE FAULT TREE INTERMEDIATE EVENTS
+    # ========================================================
     
-    # Log PV output recovering from 0 (transition from zero to non-zero)
-    if prev_pv_output <= 0.01 and solar_generation > 0.01:
-        fault_log.append([current_time, "PV_Array", "OUTPUT_ACTIVE"])
-    
-    # Update previous states for next iteration
-    prev_soc = soc
-    prev_pv_output = solar_generation
+    component_states = {name: comp["up"] for name, comp in components.items()}
+    fault_tree_events = calculate_fault_tree_events(component_states)
     
     # ========================================================
     # LOG STATE DATA
@@ -238,6 +277,8 @@ for step in range(N_STEPS):
     
     row = {
         "loss_of_supply": int(loss_of_supply),
+        "immediate_failure": int(fault_tree_events["immediate_failure"]),
+        "islanded_failure": int(fault_tree_events["islanded_failure"]),
         "soc": soc,
         "battery_kwh": battery_kwh,
         "solar_generation_kw": solar_generation,
@@ -288,7 +329,7 @@ print(f"✓ fault_log.csv ({len(fault_df)} events)")
 # PLOT COMPONENT STATES
 # ============================================================
 
-fig, axes = plt.subplots(5, 1, figsize=(16, 18))
+fig, axes = plt.subplots(6, 1, figsize=(16, 20))
 
 # Plot 1: Component States
 ax1 = axes[0]
@@ -309,28 +350,39 @@ ax1.set_title("Component States Over Time (1 = UP, 0 = DOWN)")
 ax1.legend(loc="upper right", ncol=2, fontsize=8)
 ax1.grid(True, alpha=0.3)
 
-# Plot 2: System State
+# Plot 2: Fault Tree Intermediate Events
 ax2 = axes[1]
+ax2.fill_between(
+    state_df.index,
+    0,
+    state_df["immediate_failure"],
+    alpha=0.5,
+    color="red",
+    label="Immediate Failure",
+    step="post"
+)
+ax2.fill_between(
+    state_df.index,
+    state_df["immediate_failure"],
+    state_df["immediate_failure"] + state_df["islanded_failure"],
+    alpha=0.5,
+    color="orange",
+    label="Islanded Failure",
+    step="post"
+)
 ax2.step(
     state_df.index,
     state_df["loss_of_supply"],
     where="post",
-    color="red",
+    color="darkred",
     linewidth=2,
-    label="Loss of Supply"
-)
-ax2.fill_between(
-    state_df.index,
-    0,
-    state_df["loss_of_supply"],
-    alpha=0.3,
-    color="red",
-    step="post"
+    label="Loss of Supply",
+    linestyle="--"
 )
 ax2.set_yticks([0, 1])
-ax2.set_yticklabels(["Normal", "Loss of Supply"])
-ax2.set_ylabel("System State")
-ax2.set_title("System State (Loss of Supply Events)")
+ax2.set_yticklabels(["Normal", "Failure"])
+ax2.set_ylabel("Failure Mode")
+ax2.set_title("Fault Tree Intermediate Events")
 ax2.legend(loc="upper right")
 ax2.grid(True, alpha=0.3)
 
@@ -402,8 +454,14 @@ ax4.plot(
     label="PV to Battery"
 )
 
+# Overlay PV_Array state
+pv_down_times = state_df[state_df["PV_Array"] == 0].index
+if len(pv_down_times) > 0:
+    for pv_time in pv_down_times:
+        ax4.axvspan(pv_time, pv_time + pd.Timedelta(hours=1), alpha=0.2, color='gray')
+
 ax4.set_ylabel("Power (kW)")
-ax4.set_title("Solar Generation and Usage")
+ax4.set_title("Solar Generation and Usage (Gray = PV Array Down)")
 ax4.legend(loc="upper right")
 ax4.grid(True, alpha=0.3)
 
@@ -448,12 +506,42 @@ if len(discharging_times) > 0:
         alpha=0.6
     )
 
-ax5.set_xlabel("Time")
+# Overlay Battery_Pack state (when down due to SOC = 0)
+battery_down_times = state_df[state_df["Battery_Pack"] == 0].index
+if len(battery_down_times) > 0:
+    for bat_time in battery_down_times:
+        ax5.axvspan(bat_time, bat_time + pd.Timedelta(hours=1), alpha=0.3, color='red')
+
 ax5.set_ylabel("SOC (%)")
-ax5.set_title("Battery State of Charge")
+ax5.set_title("Battery State of Charge (Red areas = Battery Pack Down)")
 ax5.set_ylim(0, 105)
 ax5.legend(loc="upper right")
 ax5.grid(True, alpha=0.3)
+
+# Plot 6: Component Availability Breakdown
+ax6 = axes[5]
+# Calculate availability for key components
+time_hours = len(state_df)
+component_availability = {}
+for comp_name in components.keys():
+    uptime = state_df[comp_name].sum()
+    availability = (uptime / time_hours) * 100
+    component_availability[comp_name] = availability
+
+# Create bar chart
+comp_names = list(component_availability.keys())
+availabilities = list(component_availability.values())
+colors = ['green' if av > 95 else 'orange' if av > 90 else 'red' for av in availabilities]
+
+bars = ax6.barh(comp_names, availabilities, color=colors, alpha=0.7)
+ax6.set_xlabel("Availability (%)")
+ax6.set_title("Component Availability Over Simulation Period")
+ax6.set_xlim(0, 100)
+ax6.grid(True, alpha=0.3, axis='x')
+
+# Add value labels
+for i, (name, av) in enumerate(zip(comp_names, availabilities)):
+    ax6.text(av + 1, i, f'{av:.1f}%', va='center', fontsize=9)
 
 plt.tight_layout()
 plt.savefig("microgrid_simulation_results.png", dpi=150, bbox_inches='tight')
@@ -468,9 +556,11 @@ print("\n" + "="*60)
 print("SIMULATION SUMMARY")
 print("="*60)
 print(f"Simulation period: {SIM_DAYS} days ({N_STEPS} hours)")
-print(f"\nLOSS OF SUPPLY:")
-print(f"  Total events: {state_df['loss_of_supply'].sum()} hours")
-print(f"  Percentage: {(state_df['loss_of_supply'].sum() / N_STEPS * 100):.2f}%")
+
+print(f"\nFAULT TREE ANALYSIS:")
+print(f"  Loss of Supply: {state_df['loss_of_supply'].sum()} hours ({(state_df['loss_of_supply'].sum() / N_STEPS * 100):.2f}%)")
+print(f"  Immediate Failure: {state_df['immediate_failure'].sum()} hours ({(state_df['immediate_failure'].sum() / N_STEPS * 100):.2f}%)")
+print(f"  Islanded Failure: {state_df['islanded_failure'].sum()} hours ({(state_df['islanded_failure'].sum() / N_STEPS * 100):.2f}%)")
 
 print(f"\nENERGY STATISTICS:")
 print(f"  Total solar generation: {state_df['solar_generation_kw'].sum():.1f} kWh")
@@ -490,8 +580,15 @@ print(f"  Discharging hours: {(state_df['battery_to_load_kw'] > 0).sum()}")
 print(f"  Average SOC: {state_df['soc'].mean():.1f}%")
 print(f"  Min SOC: {state_df['soc'].min():.1f}%")
 print(f"  Max SOC: {state_df['soc'].max():.1f}%")
+print(f"  Hours at SOC = 0: {(state_df['soc'] < 0.1).sum()}")
 
-print(f"\nCOMPONENT FAILURES:")
+print(f"\nCOMPONENT AVAILABILITY:")
+for comp_name in components.keys():
+    uptime = state_df[comp_name].sum()
+    availability = (uptime / time_hours) * 100
+    print(f"  {comp_name}: {availability:.2f}%")
+
+print(f"\nCOMPONENT EVENTS:")
 failure_counts = fault_df[fault_df['event'] == 'FAILURE'].groupby('component').size()
 repair_counts = fault_df[fault_df['event'] == 'REPAIR'].groupby('component').size()
 soc_depleted = len(fault_df[fault_df['event'] == 'SOC_DEPLETED'])
@@ -500,9 +597,10 @@ pv_zero_events = len(fault_df[fault_df['event'] == 'OUTPUT_ZERO'])
 for comp in components.keys():
     failures = failure_counts.get(comp, 0)
     repairs = repair_counts.get(comp, 0)
-    print(f"  {comp}: {failures} failures, {repairs} repairs")
+    if failures > 0 or repairs > 0:
+        print(f"  {comp}: {failures} failures, {repairs} repairs")
 
-print(f"\nSPECIAL EVENTS:")
+print(f"\nOPERATIONAL STATE EVENTS:")
 print(f"  Battery SOC depleted: {soc_depleted} times")
 print(f"  Battery SOC recovered: {len(fault_df[fault_df['event'] == 'SOC_RECOVERED'])} times")
 print(f"  PV output zero: {pv_zero_events} times")
