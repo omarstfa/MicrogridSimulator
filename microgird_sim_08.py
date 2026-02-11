@@ -10,7 +10,7 @@ SIM_DAYS = 180
 DT_HOURS = 1.0
 N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
 start_time = pd.Timestamp("2026-01-01 00:00:00")
-# np.random.seed(7)
+np.random.seed(7)
 
 # ------------------------------------------------------------
 #  LOAD SOLAR DATA
