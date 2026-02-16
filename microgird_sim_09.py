@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 #  SETTINGS
 # ------------------------------------------------------------
 EXPORT_FIGURES = False          # keep export code, but do not save now
-SIM_DAYS = 90
+SIM_DAYS = 365
 DT_HOURS = 1.0
 N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
-start_time = pd.Timestamp("2026-05-01 00:00:00")
+start_time = pd.Timestamp("2026-01-01 00:00:00")
 np.random.seed(7)
 
 # ------------------------------------------------------------
@@ -167,13 +167,19 @@ for step in range(N_STEPS):
     prev_soc = soc
     prev_pv_output = solar_generation
 
+
     # ---- overridden states for fault tree ----
     component_states_for_ft = {name: comp["up"] for name, comp in components.items()}
-    pv_array_operational = solar_generation > 0.01
-    component_states_for_ft["PV_Array"] = component_states_for_ft["PV_Array"] and pv_array_operational
+    
+    # PV is considered operational only if it can meet the load demand
+    pv_operational = solar_generation > 0.01
+    pv_sufficient = solar_generation >= load_demand
+    component_states_for_ft["PV_Array"] = component_states_for_ft["PV_Array"] and pv_sufficient
+    
+    # Battery is considered operational only if SOC > threshold (as before)
     battery_pack_operational = soc > 0.1
     component_states_for_ft["Battery_Pack"] = component_states_for_ft["Battery_Pack"] and battery_pack_operational
-
+    
     fault_tree_events = calculate_fault_tree_events(component_states_for_ft)
 
     # ---- store row ----
@@ -192,7 +198,8 @@ for step in range(N_STEPS):
         "unmet_load_kw": remaining_load,
         "can_charge": int(can_charge),
         "battery_can_discharge": int(battery_can_discharge),
-        "pv_operational": int(pv_array_operational),
+        "pv_operational": int(pv_operational),
+        "pv_sufficient": int(pv_sufficient),
         "battery_operational": int(battery_pack_operational)
     }
 
