@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 #  SETTINGS
 # ------------------------------------------------------------
 EXPORT_FIGURES = False          # keep export code, but do not save now
-SIM_DAYS = 365
+SIM_DAYS = 90
 DT_HOURS = 1.0
 N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
-start_time = pd.Timestamp("2026-01-01 00:00:00")
+start_time = pd.Timestamp("2026-05-01 00:00:00")
 np.random.seed(7)
 
 # ------------------------------------------------------------
@@ -26,13 +26,12 @@ except FileNotFoundError:
 #  SYSTEM PARAMETERS 
 # ------------------------------------------------------------
 BATTERY_CAPACITY_KWH = 20
-BATTERY_MAX_CHARGE_RATE_KW = 5
-BATTERY_MAX_DISCHARGE_RATE_KW = 5
+BATTERY_MAX_CHARGE_RATE_KW = 10
+BATTERY_MAX_DISCHARGE_RATE_KW = 10
 BATTERY_EFFICIENCY = 0.95
-PV_CAPACITY_KW = 10
 
-BASE_LOAD_KW = 3
-PEAK_LOAD_KW = 8
+BASE_LOAD_KW = 2.5
+PEAK_LOAD_KW = 5
 LOAD_VARIABILITY = 0.3
 
 # ------------------------------------------------------------
@@ -42,13 +41,12 @@ components = {
     "Grid":                 {"lambda": 0.08 / 24, "mu": 0.4 / 24,  "up": True},
     "PCC_Breaker":          {"lambda": 5e-3,       "mu": 0.3,        "up": True},
     "Islanding_Controller": {"lambda": 7e-3,       "mu": 0.25,       "up": True},
-    "PV_Array":             {"lambda": 5e-3,       "mu": 0.05,       "up": True},
-    "PV_Inverter":          {"lambda": 8e-3,       "mu": 0.15,       "up": True},
+    "PV_Array":             {"lambda": 2e-2,       "mu": 0.02,       "up": True},
+    "PV_Inverter":          {"lambda": 3e-2,       "mu": 0.05,       "up": True},
     "Battery_Pack":         {"lambda": 6e-3,       "mu": 0.05,       "up": True},
-    "BMS":                  {"lambda": 7e-3,       "mu": 0.25,       "up": True},
-    "PCS":                  {"lambda": 7e-3,       "mu": 0.25,       "up": True}
+    "BMS":                  {"lambda": 2e-2,       "mu": 0.1,        "up": True}, 
+    "PCS":                  {"lambda": 2e-2,       "mu": 0.1,        "up": True}
 }
- 
 # ------------------------------------------------------------
 #  HELPER FUNCTIONS
 # ------------------------------------------------------------
@@ -72,8 +70,8 @@ def calculate_fault_tree_events(comp_states):
     BE6 = not comp_states["Battery_Pack"]
     BE7 = not comp_states["BMS"]
     BE8 = not comp_states["PCS"]
-    immediate_failure = BE1 and (BE2 or BE3)
-    islanded_failure = BE1 and ((BE4 or BE5) and (BE6 or BE7 or BE8))
+    immediate_failure = BE1 or BE2 or BE3
+    islanded_failure = (BE4 or BE5) and (BE6 or BE7 or BE8)
     return {"immediate_failure": immediate_failure, "islanded_failure": islanded_failure}
 
 # ------------------------------------------------------------

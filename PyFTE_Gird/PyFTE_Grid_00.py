@@ -151,18 +151,18 @@ for comp in components:
     print(f"  Failures = {n_fail}, Total up = {total_up:.2f} h → λ = {lambda_hat:.6f} /h, MTTF = {mttf:.2f} h")
     print(f"  Repairs  = {n_rep}, Total down = {total_down:.2f} h → μ = {mu_hat:.6f} /h, MTTR = {mttr:.2f} h")
 
-# ----------------------------------------------------------------------
-# 5. (Optional) Weibull fit if lifelines is installed
-# ----------------------------------------------------------------------
-try:
-    from lifelines import WeibullFitter
-    print("\n=== Weibull Fits for Failure Times (with censoring) ===")
-    for comp in components:
-        stats = component_stats[comp]
-        durations = stats['up_complete'] + ([stats['up_censored']] if stats['up_censored'] > 0 else [])
-        event_observed = [1] * len(stats['up_complete']) + ([0] if stats['up_censored'] > 0 else [])
-        if len(durations) > 0:
-            wf = WeibullFitter().fit(durations, event_observed)
-            print(f"{comp}: shape ρ = {wf.rho_:.3f}, scale λ = {wf.lambda_:.3f}")
-except ImportError:
-    print("\nNote: Install 'lifelines' for Weibull/lognormal fits with censoring.")
+# # ----------------------------------------------------------------------
+# # 5. (Optional) Weibull fit if lifelines is installed
+# # ----------------------------------------------------------------------
+# try:
+#     from lifelines import WeibullFitter
+#     print("\n=== Weibull Fits for Failure Times (with censoring) ===")
+#     for comp in components:
+#         stats = component_stats[comp]
+#         durations = stats['up_complete'] + ([stats['up_censored']] if stats['up_censored'] > 0 else [])
+#         event_observed = [1] * len(stats['up_complete']) + ([0] if stats['up_censored'] > 0 else [])
+#         if len(durations) > 0:
+#             wf = WeibullFitter().fit(durations, event_observed)
+#             print(f"{comp}: shape ρ = {wf.rho_:.3f}, scale λ = {wf.lambda_:.3f}")
+# except ImportError:
+#     print("\nNote: Install 'lifelines' for Weibull/lognormal fits with censoring.")

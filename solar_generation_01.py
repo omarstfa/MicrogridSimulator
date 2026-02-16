@@ -10,10 +10,10 @@ def simulate_solar_generation(start_date, days):
     hours_in_day = 24
     
     # PV system parameters
-    pv_capacity_kw = 10  # 10 kW PV system
+    pv_capacity_kw = 20  # 10 kW PV system
     
     # New PV module parameters for physical model
-    pv_area = 60  # m² (typical area for 10 kW system, ~6.7 m² per kW)
+    pv_area = pv_capacity_kw*6.7 # m² (typical area for 10 kW system, ~6.7 m² per kW)
     eta_ref = 0.18  # Module efficiency at STC (18%)
     gamma = -0.004  # Temperature coefficient (-0.4%/°C)
     T_ref = 25  # Reference temperature (°C)
@@ -107,7 +107,7 @@ def simulate_solar_generation(start_date, days):
 
 if __name__ == "__main__":
     start_date = pd.Timestamp("2026-01-01 00:00:00")
-    days = 180
+    days = 365
     
     solar_df = simulate_solar_generation(start_date, days)
     
