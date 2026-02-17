@@ -40,7 +40,7 @@ LOAD_VARIABILITY = 0.3
 components = {
     "Grid":                 {"lambda": 0.08 / 24, "mu": 0.4 / 24,  "up": True},
     "PCC_Breaker":          {"lambda": 5e-3,       "mu": 0.3,        "up": True},
-    "Islanding_Controller": {"lambda": 7e-3,       "mu": 0.25,       "up": True},
+    "PCC_Panel": {"lambda": 7e-3,       "mu": 0.25,       "up": True},
     "PV_Array":             {"lambda": 2e-2,       "mu": 0.02,       "up": True},
     "PV_Inverter":          {"lambda": 3e-2,       "mu": 0.05,       "up": True},
     "Battery_Pack":         {"lambda": 6e-3,       "mu": 0.05,       "up": True},
@@ -64,15 +64,22 @@ def calculate_load_demand(hour):
 def calculate_fault_tree_events(comp_states):
     BE1 = not comp_states["Grid"]
     BE2 = not comp_states["PCC_Breaker"]
-    BE3 = not comp_states["Islanding_Controller"]
+    BE3 = not comp_states["PCC_Panel"]
     BE4 = not comp_states["PV_Array"]
     BE5 = not comp_states["PV_Inverter"]
     BE6 = not comp_states["Battery_Pack"]
     BE7 = not comp_states["BMS"]
     BE8 = not comp_states["PCS"]
-    immediate_failure = BE1 or BE2 or BE3
-    islanded_failure = (BE4 or BE5) and (BE6 or BE7 or BE8)
-    return {"immediate_failure": immediate_failure, "islanded_failure": islanded_failure}
+    grid_connection_failure = BE1 or BE2 or BE3
+    pv_system_failure = BE4 or BE5
+    battery_system_failure = BE6 or BE7 or BE8
+    reduced_output_from_der = pv_system_failure or battery_system_failure
+    return {
+        "grid_connection_failure": grid_connection_failure,
+        "pv_system_failure": pv_system_failure,
+        "battery_system_failure": battery_system_failure,
+        "reduced_output_from_der": reduced_output_from_der,
+        }
 
 # ------------------------------------------------------------
 #  SIMULATION LOOP
@@ -104,7 +111,7 @@ for step in range(N_STEPS):
     # ---- energy dispatch (uses hardware states) ----
     pv_available = components["PV_Array"]["up"] and components["PV_Inverter"]["up"]
     battery_hardware_ok = components["Battery_Pack"]["up"] and components["PCS"]["up"] and components["BMS"]["up"]
-    grid_available = components["Grid"]["up"] and components["PCC_Breaker"]["up"] and components["Islanding_Controller"]["up"]
+    grid_available = components["Grid"]["up"] and components["PCC_Breaker"]["up"] and components["PCC_Panel"]["up"]
 
     pv_power = solar_generation if (pv_available and solar_generation > 0.01) else 0
 
@@ -129,7 +136,7 @@ for step in range(N_STEPS):
 
     can_charge = (pv_excess > 0.01 and
                   battery_can_charge_hw and
-                  components["Islanding_Controller"]["up"])
+                  components["PCC_Panel"]["up"])
 
     if can_charge:
         charge_power = min(pv_excess, BATTERY_MAX_CHARGE_RATE_KW)
@@ -185,8 +192,8 @@ for step in range(N_STEPS):
     # ---- store row ----
     row = {
         "loss_of_supply": int(loss_of_supply_actual),
-        "immediate_failure": int(fault_tree_events["immediate_failure"]),
-        "islanded_failure": int(fault_tree_events["islanded_failure"]),
+        "grid_connection_failure": int(fault_tree_events["grid_connection_failure"]),
+        "reduced_output_from_der": int(fault_tree_events["reduced_output_from_der"]),
         "soc": soc,
         "battery_kwh": battery_kwh,
         "solar_generation_kw": solar_generation,
@@ -221,8 +228,8 @@ fault_df = pd.DataFrame(fault_log, columns=["time", "component", "event"]).set_i
 #  EXPORT DATA – TWO SEPARATE CSV FILES (EXACT COLUMNS)
 # ------------------------------------------------------------
 state_columns = [
-    "loss_of_supply", "immediate_failure", "islanded_failure",
-    "Grid", "PCC_Breaker", "Islanding_Controller",
+    "loss_of_supply", "grid_connection_failure", "reduced_output_from_der",
+    "Grid", "PCC_Breaker", "PCC_Panel",
     "PV_Array", "PV_Inverter", "Battery_Pack", "BMS", "PCS"
 ]
 state_df = full_df[state_columns].copy()
@@ -250,10 +257,10 @@ print("SIMULATION SUMMARY")
 print("="*60)
 print(f"Simulation period: {SIM_DAYS} days ({N_STEPS} hours)")
 print("\nFAULT TREE ANALYSIS (Based on Overridden States):")
-print(f"  Immediate failures: {full_df['immediate_failure'].sum()} hours ({full_df['immediate_failure'].sum() / N_STEPS * 100:.2f}%)")
-print(f"  Islanded failures: {full_df['islanded_failure'].sum()} hours ({full_df['islanded_failure'].sum() / N_STEPS * 100:.2f}%)")
+print(f"  Grid Connection Failure: {full_df['grid_connection_failure'].sum()} hours ({full_df['grid_connection_failure'].sum() / N_STEPS * 100:.2f}%)")
+print(f"  Reduced Output from DERs: {full_df['reduced_output_from_der'].sum()} hours ({full_df['reduced_output_from_der'].sum() / N_STEPS * 100:.2f}%)")
 print("\nACTUAL SYSTEM PERFORMANCE:")
-print(f"  Loss of supply: {full_df['loss_of_supply'].sum()} hours ({full_df['loss_of_supply'].sum() / N_STEPS * 100:.2f}%)")
+print(f"  Loss of Power Supply: {full_df['loss_of_supply'].sum()} hours ({full_df['loss_of_supply'].sum() / N_STEPS * 100:.2f}%)")
 print("\nOVERRIDE STATISTICS:")
 print(f"  Hours PV_Array marked down (operational): {(full_df['PV_Array'] != full_df['PV_Array_hw']).sum()}")
 print(f"  Hours Battery_Pack marked down (operational): {(full_df['Battery_Pack'] != full_df['Battery_Pack_hw']).sum()}")
@@ -334,12 +341,12 @@ ax2_top.legend(loc="upper right", ncol=2, fontsize=8)
 ax2_top.grid(True, alpha=0.3)
 
 # ---- Bottom: Fault‑tree events, scaled for readability ----
-ax2_bot.step(full_df.index, full_df["immediate_failure"] * 0.4, where="post",
-             color="red", linewidth=2, label="Immediate Failure (0.4x)", alpha=0.7)
-ax2_bot.step(full_df.index, full_df["islanded_failure"] * 0.8, where="post",
-             color="orange", linewidth=2, label="Islanded Failure (0.8x)", alpha=0.7)
+ax2_bot.step(full_df.index, full_df["grid_connection_failure"] * 0.4, where="post",
+             color="red", linewidth=2, label="Grid Connection Failure (0.4x)", alpha=0.7)
+ax2_bot.step(full_df.index, full_df["reduced_output_from_der"] * 0.8, where="post",
+             color="orange", linewidth=2, label="Reduced Output from DERs (0.8x)", alpha=0.7)
 ax2_bot.step(full_df.index, full_df["loss_of_supply"] * 1.0, where="post",
-             color="darkred", linewidth=2, label="Actual Loss of Supply", alpha=0.7)
+             color="darkred", linewidth=2, label="Loss of Power Supply", alpha=0.7)
 ax2_bot.set_ylim(0, 1.2)
 ax2_bot.set_ylabel("Scaled Events")
 ax2_bot.set_title("Fault‑Tree Events (based on overridden states)")
