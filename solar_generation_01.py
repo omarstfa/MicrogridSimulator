@@ -107,7 +107,7 @@ def simulate_solar_generation(start_date, days):
 
 if __name__ == "__main__":
     start_date = pd.Timestamp("2026-01-01 00:00:00")
-    days = 365
+    days = 365*5
     
     solar_df = simulate_solar_generation(start_date, days)
     

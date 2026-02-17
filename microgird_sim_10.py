@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #  SETTINGS
 # ------------------------------------------------------------
 EXPORT_FIGURES = False          # keep export code, but do not save now
-SIM_DAYS = 365
+SIM_DAYS = 365*5
 DT_HOURS = 1.0
 N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
 start_time = pd.Timestamp("2026-01-01 00:00:00")
