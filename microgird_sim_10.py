@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #  SETTINGS
 # ------------------------------------------------------------
 EXPORT_FIGURES = False          # keep export code, but do not save now
-SIM_DAYS = 30
+SIM_DAYS = 365*5
 DT_HOURS = 1.0
 N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
 start_time = pd.Timestamp("2026-01-01 00:00:00")
@@ -38,9 +38,9 @@ LOAD_VARIABILITY = 0.3
 #  COMPONENT DEFINITIONS
 # ------------------------------------------------------------
 components = {
-    "Grid":                 {"lambda": 0.08 / 24, "mu": 0.4 / 24,  "up": True},
+    "Grid":                 {"lambda": 0.08 / 24,  "mu": 0.4 / 24,   "up": True},
     "PCC_Breaker":          {"lambda": 5e-3,       "mu": 0.3,        "up": True},
-    "PCC_Panel": {"lambda": 7e-3,       "mu": 0.25,       "up": True},
+    "PCC_Panel":            {"lambda": 7e-3,       "mu": 0.25,       "up": True},
     "PV_Array":             {"lambda": 2e-2,       "mu": 0.02,       "up": True},
     "PV_Inverter":          {"lambda": 3e-2,       "mu": 0.05,       "up": True},
     "Battery_Pack":         {"lambda": 6e-3,       "mu": 0.05,       "up": True},
