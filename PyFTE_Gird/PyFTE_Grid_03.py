@@ -270,3 +270,119 @@ try:
         print(f"{event}: shape ρ = {wf.rho_:.3f}, scale λ = {wf.lambda_:.3f}{note}")
 except ImportError:
     print("\nNote: Install 'lifelines' for Weibull/lognormal fits with censoring.")
+    
+#%% Summary
+
+# ----------------------------------------------------------------------
+# 6. Important learned parameters (fault tree + distributions)
+# ----------------------------------------------------------------------
+print("\n" + "="*60)
+print("EXPORT: Learned System Parameters")
+print("="*60)
+
+# Prepare export data structure
+export_data = {
+    'fault_tree': {
+        'top_event': top_event,
+        'factored_expression_names': factored_names,
+        'factored_expression_labels': factored_be,
+        'minimal_cut_sets': [sorted(list(mcs)) for mcs in minimal_cut_sets],
+        'basic_events_legend': be_legend
+    },
+    'exponential_params': {},
+    'weibull_params': {}
+}
+
+# Collect exponential and Weibull parameters
+for event in basic_events:
+    stats = be_stats[event]
+    total_up = sum(stats['up_complete']) + stats['up_censored']
+    total_down = sum(stats['down_complete']) + stats['down_censored']
+    n_fail = stats['n_failures']
+    n_rep = stats['n_repairs']
+    
+    lambda_hat = n_fail / total_up if total_up > 0 and n_fail > 0 else 0.0
+    mu_hat = n_rep / total_down if total_down > 0 and n_rep > 0 else 0.0
+    
+    export_data['exponential_params'][event] = {
+        'failure_rate': round(lambda_hat, 6),
+        'repair_rate': round(mu_hat, 6),
+        'mttf_hours': round(1.0/lambda_hat, 2) if lambda_hat > 0 else float('inf'),
+        'mttr_hours': round(1.0/mu_hat, 2) if mu_hat > 0 else float('inf'),
+        'failures_observed': n_fail,
+        'repairs_observed': n_rep
+    }
+
+# Add Weibull parameters if lifelines was available
+try:
+    from lifelines import WeibullFitter
+    
+    for event in basic_events:
+        stats = be_stats[event]
+        raw_durations = stats['up_complete'] + ([stats['up_censored']] if stats['up_censored'] > 0 else [])
+        raw_event_observed = [1] * len(stats['up_complete']) + ([0] if stats['up_censored'] > 0 else [])
+        
+        pairs = [(d, e) for d, e in zip(raw_durations, raw_event_observed) if d > 0]
+        
+        if pairs:
+            durations, event_observed = zip(*pairs)
+            wf = WeibullFitter().fit(list(durations), list(event_observed))
+            export_data['weibull_params'][event] = {
+                'shape_rho': round(wf.rho_, 3),
+                'scale_lambda': round(wf.lambda_, 3)
+            }
+except:
+    export_data['weibull_params'] = "Weibull fitting not available (install lifelines)"
+
+# Print condensed export summary
+print("\nFAULT TREE (Factored):")
+print(f"  {top_event} = {factored_be}")
+
+print("\nBASIC EVENTS - Distribution Parameters:")
+print("  " + "="*90)
+print("  ID      Basic Event     Occurrences  MTTF(h)  MTTR(h)   Exp_λ(/h)      Weibull_ρ     Weibull_λ(h)")
+print("  " + "-"*90)
+for be_id, be_name in sorted(be_legend.items()):
+    exp = export_data['exponential_params'][be_name]
+    weib = export_data['weibull_params'].get(be_name, {}) if isinstance(export_data['weibull_params'], dict) else {}
+    
+    exp_rate = f"{exp['failure_rate']:.6f}"
+    weib_rho = f"{weib.get('shape_rho', 'N/A'):.3f}" if isinstance(weib.get('shape_rho'), float) else "N/A"
+    weib_lambda = f"{weib.get('scale_lambda', 'N/A'):.1f}" if isinstance(weib.get('scale_lambda'), float) else "N/A"
+    
+    print(f"  {be_id:4}    {be_name:12}   {exp['failures_observed']:8d}   {exp['mttf_hours']:7.1f}  {exp['mttr_hours']:7.1f}    {exp_rate:>10}   {weib_rho:>10}   {weib_lambda:>12}")
+
+print("  " + "="*90)
+print("\n  Exp_λ: Exponential failure rate")
+print("  Weibull_ρ: Weibull shape parameter (ρ<1: infant mortality, ρ=1: random failures, ρ>1: wear-out)")
+print("  Weibull_λ: Weibull scale parameter (characteristic life)")
+
+#%% Export CSV
+
+# ----------------------------------------------------------------------
+# 7. Save to CSV files
+# ----------------------------------------------------------------------
+import csv
+
+# Save fault tree expression to CSV
+with open('fault_tree_expression.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(['Top_Event', 'Factored_Expression'])
+    writer.writerow([top_event, factored_be])
+
+# Save distribution parameters to CSV
+with open('distribution_parameters.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(['ID', 'Basic Event', 'Occurrences', 'MTTF_h', 'MTTR_h', 
+                     'Exp_λ_per_h', 'Weibull_ρ', 'Weibull_λ_h'])
+    for be_id, be_name in sorted(be_legend.items()):
+        exp = export_data['exponential_params'][be_name]
+        weib = export_data['weibull_params'].get(be_name, {}) if isinstance(export_data['weibull_params'], dict) else {}
+        writer.writerow([
+            be_id, be_name, exp['failures_observed'], exp['mttf_hours'], exp['mttr_hours'],
+            exp['failure_rate'],
+            weib.get('shape_rho', 'N/A'),
+            weib.get('scale_lambda', 'N/A')
+        ])
+
+print("\nFiles saved: fault_tree_expression.csv, distribution_parameters.csv")
