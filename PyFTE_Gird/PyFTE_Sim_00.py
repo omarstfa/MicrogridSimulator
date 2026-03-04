@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 # 1. Load input data
 # ----------------------------------------------------------------------
 try:
-    ft_df = pd.read_csv('fault_tree_expression.csv')
-    dist_df = pd.read_csv('distribution_parameters.csv')
+    ft_df = pd.read_csv('fault_tree_expression_10.csv')
+    dist_df = pd.read_csv('distribution_parameters_10.csv')
 except FileNotFoundError as e:
     print("Error: missing CSV file(s). Make sure both")
     print("  fault_tree_expression.csv  and  distribution_parameters.csv")

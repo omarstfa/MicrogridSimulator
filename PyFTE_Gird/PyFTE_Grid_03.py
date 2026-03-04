@@ -4,8 +4,8 @@ import numpy as np
 # ----------------------------------------------------------------------
 # 1. Load data and discover basic events
 # ----------------------------------------------------------------------
-fault_log = pd.read_csv('fault_log.csv', parse_dates=['time'])
-state_data = pd.read_csv('state_data_with_override.csv', index_col=0, parse_dates=True)
+fault_log = pd.read_csv('fault_log_10.csv', parse_dates=['time'])
+state_data = pd.read_csv('state_data_with_override_10.csv', index_col=0, parse_dates=True)
 
 print("\n" + "="*60)
 print("Extracted Events")
