@@ -106,11 +106,10 @@ def simulate_solar_generation(start_date, days):
     return solar_df
 
 if __name__ == "__main__":
+    
     start_date = pd.Timestamp("2026-01-01 00:00:00")
-    days = 365*5
-    
+    days = 365 * 6      # 6 years (enough for any 5‑year window)
     solar_df = simulate_solar_generation(start_date, days)
-    
     solar_df.to_csv('solar_generation.csv')
     
     # Create a comprehensive plot
