@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #  SETTINGS – SCALE SIMULATION TIME, NOT FAILURE RATES
 # ------------------------------------------------------------
 EXPORT_FIGURES = False
-SIM_YEARS = 200                     # very long simulation to collect failures
+SIM_YEARS = 50                     # very long simulation to collect failures
 DT_HOURS = 1.0
 N_STEPS = int(SIM_YEARS * 365 * 24 / DT_HOURS)
 start_time = pd.Timestamp("2026-01-01 00:00:00")

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #  SETTINGS
 # ------------------------------------------------------------
 EXPORT_FIGURES = False
-SIM_DAYS = 365*5                 # 1 year (scaled simulation)
+SIM_DAYS = 365*50                 # 1 year (scaled simulation)
 DT_HOURS = 1.0
 N_STEPS = int((SIM_DAYS * 24) / DT_HOURS)
 start_time = pd.Timestamp("2026-06-01 00:00:00")
@@ -14,7 +14,7 @@ start_time = pd.Timestamp("2026-06-01 00:00:00")
 
 # Scaling factor: increase failure rates / decrease Weibull scale
 # to see enough failures during 1 year simulation.
-SCALE = 1
+SCALE = 10
 
 # ------------------------------------------------------------
 #  LOAD SOLAR DATA

@@ -7,7 +7,7 @@ import itertools
 # ----------------------------------------------------------------------
 # 1. Load data and discover basic events
 # ----------------------------------------------------------------------
-SCALE = 10000  # Must match the scaling factor used in microgrid_sim_12
+SCALE = 10  # Must match the scaling factor used in microgrid_sim_12
 
 fault_log = pd.read_csv('fault_log.csv', parse_dates=['time'])
 state_data = pd.read_csv('state_data_with_override.csv', index_col=0, parse_dates=True)
